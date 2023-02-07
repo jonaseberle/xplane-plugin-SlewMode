@@ -265,40 +265,40 @@ end
 
 local function init()
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Toggle",
+        "flightwusel/SlewMode/Toggle",
         "SlewMode: Activate/De-Activate (Toggle)",
         "slewMode_toggle_callback()"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Activate",
+        "flightwusel/SlewMode/Activate",
         "SlewMode: Activate",
         "slewMode_activate_callback(true)"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Deactivate",
+        "flightwusel/SlewMode/Deactivate",
         "SlewMode: De-Activate",
         "slewMode_activate_callback(false)"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Altitude_increase_lots",
+        "flightwusel/SlewMode/Altitude_increase_lots",
         "SlewMode: Altitude ++",
         "slewMode_altitudeChangeBy_callback(100.)",
         "slewMode_altitudeChangeBy_callback(200.)"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Altitude_increase",
+        "flightwusel/SlewMode/Altitude_increase",
         "SlewMode: Altitude +",
         "slewMode_altitudeChangeBy_callback(10.)",
         "slewMode_altitudeChangeBy_callback(20.)"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Altitude_decrease",
+        "flightwusel/SlewMode/Altitude_decrease",
         "SlewMode: Altitude -",
         "slewMode_altitudeChangeBy_callback(-10.)",
         "slewMode_altitudeChangeBy_callback(-20.)"
     )
     addMacroAndCommand(
-        "FlyWithLua/flightwusel/SlewMode/Altitude_decrease_lots",
+        "flightwusel/SlewMode/Altitude_decrease_lots",
         "SlewMode: Altitude --",
         "slewMode_altitudeChangeBy_callback(-100.)",
         "slewMode_altitudeChangeBy_callback(-200.)"
