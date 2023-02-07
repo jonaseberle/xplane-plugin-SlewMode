@@ -21,6 +21,10 @@ local settings = {
         max_radPerS = math.rad(300),
         inputAccel = 400,
     },
+    followGroundSmoothing = {
+        pitch = .2, -- x seconds attack
+        roll = .2
+    }
 }
 
 local isEnabled = false
@@ -179,11 +183,16 @@ local function do_slew()
         y = y - agl + aircraftGearAgl_m
 
         local groundPitch_deg, groundRoll_deg = levelWithGround(hdg_rad)
-        local _pitch_deg = groundPitch_deg + aircraftGearPitch_deg
-        local _roll_deg = groundRoll_deg
-        -- smooth 1/4s attack
-        XPLMSetDataf(pitch_dataref, pitch_deg + (_pitch_deg - pitch_deg) * period_s * 4)
-        XPLMSetDataf(roll_dataref, roll_deg + (_roll_deg - roll_deg) * period_s * 4)
+        -- smooth 1/x seconds attack
+        local pitchTarget_deg = groundPitch_deg + aircraftGearPitch_deg
+        local dPitchTarget_deg = pitchTarget_deg - pitch_deg
+        local dPitch_deg = dPitchTarget_deg / settings['followGroundSmoothing']['pitch'] * period_s
+        XPLMSetDataf(pitch_dataref, pitch_deg + dPitch_deg)
+
+        local rollTarget_deg = groundRoll_deg
+        local dRollTarget_deg = rollTarget_deg - roll_deg
+        local dRoll_deg = dRollTarget_deg / settings['followGroundSmoothing']['roll'] * period_s
+        XPLMSetDataf(roll_dataref, roll_deg + dRoll_deg)
     end
 
     XPLMSetDatad(x_dataref, x)
