@@ -18,7 +18,7 @@ local settings = {
     },
     turn = {
         axis = 3,
-        max_radPerS = math.rad(3),
+        max_radPerS = math.rad(300),
         inputAccel = 400,
     },
 }
