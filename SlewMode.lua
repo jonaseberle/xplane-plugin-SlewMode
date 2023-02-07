@@ -27,8 +27,6 @@ local isEnabled = false
 local isFollowGround = false
 local dAltitude_mPerS = 0.
 local aircraftGearPitch_deg = 0.
-local defaultEngineSoundRatio = 0.
-local smoothedGroundNormal
 
 local x_dataref = XPLMFindDataRef("sim/flightmodel/position/local_x")
 local y_dataref = XPLMFindDataRef("sim/flightmodel/position/local_y")
