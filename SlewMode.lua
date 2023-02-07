@@ -27,6 +27,7 @@ local isEnabled = false
 local isFollowGround = false
 local dAltitude_mPerS = 0.
 local aircraftGearPitch_deg = 0.
+local aircraftGearAgl_m = 0.
 
 local x_dataref = XPLMFindDataRef("sim/flightmodel/position/local_x")
 local y_dataref = XPLMFindDataRef("sim/flightmodel/position/local_y")
@@ -158,7 +159,7 @@ local function do_slew()
     -- reset after
     dAltitude_mPerS = 0.
 
-    if agl < .0 then
+    if agl < aircraftGearAgl_m then
         if not isFollowGround then
             log("Entered the ground domain. Killing all momentum.")
             isFollowGround = true
@@ -175,7 +176,7 @@ local function do_slew()
 
     -- plant on ground if isFollowGround
     if isFollowGround then
-        y = y - agl
+        y = y - agl + aircraftGearAgl_m
 
         local groundPitch_deg, groundRoll_deg = levelWithGround(hdg_rad)
         local _pitch_deg = groundPitch_deg + aircraftGearPitch_deg
@@ -240,13 +241,15 @@ local function activate(_isEnabled)
             local hdg_rad = math.rad(XPLMGetDataf(hdg_dataref))
             local pitchTerrain_deg, _ = levelWithGround(hdg_rad)
             aircraftGearPitch_deg = XPLMGetDataf(pitch_dataref) - pitchTerrain_deg
+            aircraftGearAgl_m = XPLMGetDataf(agl_dataref)
         end
 
         log(
             string.format(
-                "Entered the %s domain. Default gear plane pitch angle: %.2f°",
+                "Entered the %s domain. Default gear plane pitch angle: %.2f°, agl: %.2fm",
                 isFollowGround and "ground" or "air",
-                aircraftGearPitch_deg
+                aircraftGearPitch_deg,
+                aircraftGearAgl_m
             )
         )
     end
