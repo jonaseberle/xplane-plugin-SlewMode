@@ -30,6 +30,5 @@ There are further commands available:
 
 ## Help
 
-If you have problems, feedback or just want to talk you can open an issue here or use the [thread on 
-the x-plane.org forum](https://forums.x-plane.org/index.php?/forums/topic/283229-slew-reposition-mode/)
-https://github.com/jonaseberle/xplane-plugin-SlewMode
+If you have problems, feedback or just want to talk you can open an issue here or use the
+[thread on the x-plane.org forum](https://forums.x-plane.org/index.php?/forums/topic/283229-slew-reposition-mode/)
