@@ -230,9 +230,6 @@ local function isOnGround()
 end
 
 local function activate(_isEnabled)
-    if isEnabled == _isEnabled then
-        return
-    end
     isEnabled = _isEnabled
 
     log(
@@ -326,6 +323,10 @@ function slewMode_toggle_callback()
 end
 
 function slewMode_activate_callback(_isEnabled)
+    if isEnabled == _isEnabled then
+        return
+    end
+
     activate(_isEnabled)
 end
 
