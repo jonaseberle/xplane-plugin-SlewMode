@@ -1,37 +1,61 @@
 --[[
     Author: flightwusel
-    Tested with: XP 12.03r1
+    See notes on https://github.com/jonaseberle/xplane-plugin-SlewMode
+
     Kudos to teleport.lua by shryft for all things placement and rotation
     Thanks to apn, philipp and KarlL in https://forums.x-plane.org/index.php?/forums/topic/267531-how-to-probe-a-mesh-slope-with-xplmprobeterrainxyz/ for how to rotate the plane to align with terrain
 ]]
 
+-- adapt these settings to your needs:
 local settings = {
-    forward = {
-        axis = 1,
-        max_mPerS = 2000,
-        inputAccel = 1000,
+    modifierKeyCode = 32, -- 32 is space
+    move = {
+        forward = {
+            axis = 1, -- X-Plane joystick mapped axis number
+            onlyWhenModifier = false, -- this function is active when the modifier key is in this state
+            max_mPerS = 2000, -- maximum velocity m/s
+            inputAccel = 1000, -- the higher this value the finer the control around the center
+        },
+        sideways = {
+            axis = 2,
+            onlyWhenModifier = false,
+            max_mPerS = 2000,
+            inputAccel = 400,
+        },
     },
-    sideways = {
-        axis = 2,
-        max_mPerS = 2000,
-        inputAccel = 1000,
+    rotate = {
+        pitch = {
+            axis = 1,
+            onlyWhenModifier = true,
+            max_radPerS = math.rad(300), -- maximum angular velocity rad/s
+            inputAccel = 400,
+        },
+        roll = {
+            axis = 2,
+            onlyWhenModifier = true,
+            max_radPerS = math.rad(300),
+            inputAccel = 400,
+        },
+        yaw = {
+            axis = 3,
+            max_radPerS = math.rad(300),
+            inputAccel = 400,
+        },
     },
-    turn = {
-        axis = 3,
-        max_radPerS = math.rad(300),
-        inputAccel = 400,
-    },
-    followGroundSmoothing = {
+    followGroundSmoothing = { -- when on the ground, plane pitch/roll changes are smoothed
         pitch = .2, -- x seconds attack
         roll = .2
     }
 }
+
+--[[ runtime variables ]]
 
 local isEnabled = false
 local isFollowGround = false
 local dAltitude_mPerS = 0.
 local aircraftGearPitch_deg = 0.
 local aircraftGearAgl_m = 0.
+local isModifierKeyPressed = false
 
 local x_dataref = XPLMFindDataRef("sim/flightmodel/position/local_x")
 local y_dataref = XPLMFindDataRef("sim/flightmodel/position/local_y")
@@ -111,7 +135,7 @@ local function eulerToQuaternion(hdg_rad, pitch_rad, roll_rad)
     }
 end
 
--- @return pitch_deg, roll_deg
+-- @return pitch_rad, roll_rad
 local function levelWithGround(hdg_rad)
     -- https://forums.x-plane.org/index.php?/forums/topic/267531-how-to-probe-a-mesh-slope-with-xplmprobeterrainxyz/
     local groundNormal = XPLMGetDatavf(groundNormal_dataref, 0, 3)
@@ -123,16 +147,19 @@ local function levelWithGround(hdg_rad)
     local theta = thetaNorth * math.cos(hdg_rad) - phiNorth * math.sin(hdg_rad)
     local phi = thetaNorth * math.sin(hdg_rad) + phiNorth * math.cos(hdg_rad)
 
-    return math.deg(theta), math.deg(phi)
+    return theta, phi
 end
 
 local function setRotation(hdg_rad, pitch_rad, roll_rad)
-    XPLMSetDataf(hdg_dataref, math.deg(hdg_rad))
-
     -- I haven't understood yet why for q 360° are 1 PI (not 2) but here we go...
     -- @see https://developer.x-plane.com/article/movingtheplane/
     local q = eulerToQuaternion(hdg_rad / 2, pitch_rad / 2, roll_rad / 2)
+    -- I think we actually only have to update when leaving override_planepath but whatever...
     XPLMSetDatavf(q_dataref, q, 0, 4)
+
+    XPLMSetDataf(hdg_dataref, math.deg(hdg_rad))
+    XPLMSetDataf(pitch_dataref, math.deg(pitch_rad))
+    XPLMSetDataf(roll_dataref, math.deg(roll_rad))
 end
 
 local function arrestAngularMomentum()
@@ -160,19 +187,27 @@ local function do_slew()
 
     --[[ position ]]
 
-    local dForward = accelerate(axii[settings['forward']['axis']], settings['forward']['inputAccel'])
-    local dForward_mPerS = dForward * settings['forward']['max_mPerS']
-    local dx = -math.sin(hdg_rad) * dForward_mPerS * period_s
-    x = x + dx
-    local dz = math.cos(hdg_rad) * dForward_mPerS * period_s
-    z = z + dz
+    -- forward
+    local functionSettings = settings['move']['forward']
+    if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
+        local dForward = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
+        local dForward_mPerS = dForward * functionSettings['max_mPerS']
+        local dx = -math.sin(hdg_rad) * dForward_mPerS * period_s
+        x = x + dx
+        local dz = math.cos(hdg_rad) * dForward_mPerS * period_s
+        z = z + dz
+    end
 
-    local dSideways = accelerate(axii[settings['sideways']['axis']], settings['turn']['inputAccel'])
-    local dSideways_mPerS = dSideways * settings['sideways']['max_mPerS']
-    local dx = -math.sin(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
-    x = x + dx
-    local dz = math.cos(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
-    z = z + dz
+    -- sideways
+    local functionSettings = settings['move']['sideways']
+    if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
+        local dSideways = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
+        local dSideways_mPerS = dSideways * functionSettings['max_mPerS']
+        local dx = -math.sin(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
+        x = x + dx
+        local dz = math.cos(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
+        z = z + dz
+    end
 
     -- adjust altitude
     local dy = dAltitude_mPerS * period_s
@@ -196,29 +231,45 @@ local function do_slew()
     if isFollowGround then
         y = y - agl + aircraftGearAgl_m
 
-        local groundPitch_deg, groundRoll_deg = levelWithGround(hdg_rad)
+        local groundPitch_rad, groundRoll_rad = levelWithGround(hdg_rad)
         -- smooth 1/x seconds attack
-        local pitchTarget_deg = groundPitch_deg + aircraftGearPitch_deg
-        local dPitchTarget_deg = pitchTarget_deg - pitch_deg
-        local dPitch_deg = dPitchTarget_deg / settings['followGroundSmoothing']['pitch'] * period_s
-        XPLMSetDataf(pitch_dataref, pitch_deg + dPitch_deg)
+        local pitchTarget_rad = groundPitch_rad + math.rad(aircraftGearPitch_deg)
+        local dPitchTarget_rad = pitchTarget_rad - pitch_rad
+        local dPitch_rad = dPitchTarget_rad / settings['followGroundSmoothing']['pitch'] * period_s
+        pitch_rad = pitch_rad + dPitch_rad
 
-        local rollTarget_deg = groundRoll_deg
-        local dRollTarget_deg = rollTarget_deg - roll_deg
-        local dRoll_deg = dRollTarget_deg / settings['followGroundSmoothing']['roll'] * period_s
-        XPLMSetDataf(roll_dataref, roll_deg + dRoll_deg)
+        local rollTarget_rad = groundRoll_rad
+        local dRollTarget_rad = rollTarget_rad - roll_rad
+        local dRoll_rad = dRollTarget_rad / settings['followGroundSmoothing']['roll'] * period_s
+        roll_rad = roll_rad + dRoll_rad
     end
 
+    --[[ rotation ]]
+    local functionSettings = settings['rotate']['pitch']
+    if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
+        local _d = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
+        local _d_radPerS = _d * functionSettings['max_radPerS']
+        pitch_rad = pitch_rad + _d_radPerS * period_s
+    end
+
+    local functionSettings = settings['rotate']['roll']
+    if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
+        local _d = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
+        local _d_radPerS = _d * functionSettings['max_radPerS']
+        roll_rad = roll_rad + _d_radPerS * period_s
+    end
+
+    local functionSettings = settings['rotate']['yaw']
+    if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
+        local _d = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
+        local _d_radPerS = _d * functionSettings['max_radPerS']
+        hdg_rad = hdg_rad + _d_radPerS * period_s
+    end
+
+    --[[ write ]]
     XPLMSetDatad(x_dataref, x)
     XPLMSetDatad(y_dataref, y)
     XPLMSetDatad(z_dataref, z)
-
-    --[[ rotation ]]
-
-    local dTurn = accelerate(axii[settings['turn']['axis']], settings['turn']['inputAccel'])
-    local dHdg_radPerS = dTurn * settings['turn']['max_radPerS']
-    hdg_rad = hdg_rad + dHdg_radPerS * period_s
-
     setRotation(hdg_rad, pitch_rad, roll_rad)
 end
 
@@ -254,8 +305,8 @@ local function activate(_isEnabled)
         if isFollowGround then
             -- let's capture the current pitch attitude if on the ground - saves us from calculating the gear "plane" from raw gear position values...
             local hdg_rad = math.rad(XPLMGetDataf(hdg_dataref))
-            local pitchTerrain_deg, _ = levelWithGround(hdg_rad)
-            aircraftGearPitch_deg = XPLMGetDataf(pitch_dataref) - pitchTerrain_deg
+            local pitchTerrain_rad, _ = levelWithGround(hdg_rad)
+            aircraftGearPitch_deg = XPLMGetDataf(pitch_dataref) - math.deg(pitchTerrain_rad)
             aircraftGearAgl_m = XPLMGetDataf(agl_dataref)
         end
 
@@ -343,6 +394,7 @@ local function init()
     )
     do_every_frame("slewMode_frame_callback()")
     do_every_draw("slewMode_draw_callback()")
+    do_on_keystroke("slewmode_keystroke_callback()")
 end
 
 init()
@@ -378,6 +430,7 @@ function slewMode_setLevel_callback()
         return
     end
 
+    -- this function can be used to reset a wrong gear plane
     if isFollowGround then
         aircraftGearPitch_deg = 0.
         aircraftGearAgl_m = 0.
@@ -407,4 +460,22 @@ function slewMode_draw_callback()
         "Slew active",
         isFollowGround and "Following terrain" or "Free"
     )
+end
+
+function slewmode_keystroke_callback()
+    if not isEnabled then
+        return
+    end
+
+    if VKEY == settings['modifierKeyCode'] then
+        isModifierKeyPressed = KEY_ACTION == "pressed"
+        log(
+            string.format(
+                "modifier enabled: %s",
+                isModifierKeyPressed
+            )
+        )
+    end
+
+    -- RESUME_KEY
 end
