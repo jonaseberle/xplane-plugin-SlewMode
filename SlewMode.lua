@@ -36,6 +36,9 @@ local aircraftGearAgl_m = 0.
 local x_dataref = XPLMFindDataRef("sim/flightmodel/position/local_x")
 local y_dataref = XPLMFindDataRef("sim/flightmodel/position/local_y")
 local z_dataref = XPLMFindDataRef("sim/flightmodel/position/local_z")
+local vx_dataref = XPLMFindDataRef("sim/flightmodel/position/local_vx")
+local vy_dataref = XPLMFindDataRef("sim/flightmodel/position/local_vy")
+local vz_dataref = XPLMFindDataRef("sim/flightmodel/position/local_vz")
 local pitch_dataref = XPLMFindDataRef("sim/flightmodel/position/theta")
 local roll_dataref = XPLMFindDataRef("sim/flightmodel/position/phi")
 local hdg_dataref = XPLMFindDataRef("sim/flightmodel/position/psi")
@@ -123,6 +126,21 @@ local function levelWithGround(hdg_rad)
     return math.deg(theta), math.deg(phi)
 end
 
+local function setRotation(hdg_rad, pitch_rad, roll_rad)
+    XPLMSetDataf(hdg_dataref, math.deg(hdg_rad))
+
+    -- I haven't understood yet why for q 360° are 1 PI (not 2) but here we go...
+    -- @see https://developer.x-plane.com/article/movingtheplane/
+    local q = eulerToQuaternion(hdg_rad / 2, pitch_rad / 2, roll_rad / 2)
+    XPLMSetDatavf(q_dataref, q, 0, 4)
+end
+
+local function arrestAngularMomentum()
+    set("sim/flightmodel/position/Prad", 0.)
+    set("sim/flightmodel/position/Qrad", 0.)
+    set("sim/flightmodel/position/Rrad", 0.)
+end
+
 local function do_slew()
     local period_s = XPLMGetDataf(period_s_dataref)
 
@@ -167,14 +185,10 @@ local function do_slew()
         if not isFollowGround then
             log("Entered the ground domain. Killing all momentum.")
             isFollowGround = true
-            -- kill all momentum
-            set("sim/flightmodel/position/local_vx", 0.)
-            set("sim/flightmodel/position/local_vy", 0.)
-            set("sim/flightmodel/position/local_vz", 0.)
-            set("sim/flightmodel/position/Prad", 0.)
-            set("sim/flightmodel/position/Qrad", 0.)
-            set("sim/flightmodel/position/Rrad", 0.)
-
+            XPLMSetDataf(vx_dataref, 0.)
+            XPLMSetDataf(vy_dataref, 0.)
+            XPLMSetDataf(vz_dataref, 0.)
+            arrestAngularMomentum()
         end
     end
 
@@ -205,12 +219,7 @@ local function do_slew()
     local dHdg_radPerS = dTurn * settings['turn']['max_radPerS']
     hdg_rad = hdg_rad + dHdg_radPerS * period_s
 
-    XPLMSetDataf(hdg_dataref, math.deg(hdg_rad))
-
-    -- I haven't understood yet why for q 360° are 1 PI (not 2) but here we go...
-    -- @see https://developer.x-plane.com/article/movingtheplane/
-    local q = eulerToQuaternion(hdg_rad / 2, pitch_rad / 2, roll_rad / 2)
-    XPLMSetDatavf(q_dataref, q, 0, 4)
+    setRotation(hdg_rad, pitch_rad, roll_rad)
 end
 
 local function isOnGround()
@@ -258,6 +267,23 @@ local function activate(_isEnabled)
                 aircraftGearAgl_m
             )
         )
+    else
+        -- align velicity vector with rotation
+        local vx = XPLMGetDataf(vx_dataref)
+        local vy = XPLMGetDataf(vy_dataref)
+        local vz = XPLMGetDataf(vz_dataref)
+        local speed_local = math.sqrt(vx^2 + vy^2 + vz^2)
+
+        local hdg_rad = math.rad(XPLMGetDataf(hdg_dataref))
+        local pitch_rad = math.rad(XPLMGetDataf(pitch_dataref))
+
+        local vx = math.sin(hdg_rad) * math.cos(pitch_rad) * speed_local
+        local vy = math.sin(pitch_rad) * speed_local
+        local vz = -math.cos(hdg_rad) * math.cos(pitch_rad) * speed_local
+
+        XPLMSetDataf(vx_dataref, vx)
+        XPLMSetDataf(vy_dataref, vy)
+        XPLMSetDataf(vz_dataref, vz)
     end
 
     -- http://www.xsquawkbox.net/xpsdk/mediawiki/Sim/operation/override/override_planepath
