@@ -336,6 +336,11 @@ local function init()
         "slewMode_altitudeChangeBy_callback(-100.)",
         "slewMode_altitudeChangeBy_callback(-200.)"
     )
+    addMacroAndCommand(
+        "flightwusel/SlewMode/Level",
+        "SlewMode: Level roll and pitch",
+        "slewMode_setLevel_callback()"
+    )
     do_every_frame("slewMode_frame_callback()")
     do_every_draw("slewMode_draw_callback()")
 end
@@ -366,6 +371,21 @@ function slewMode_altitudeChangeBy_callback(_dAltitude_mPerS)
         isFollowGround = false
     end
     dAltitude_mPerS = _dAltitude_mPerS
+end
+
+function slewMode_setLevel_callback()
+    if not isEnabled then
+        return
+    end
+
+    if isFollowGround then
+        aircraftGearPitch_deg = 0.
+        aircraftGearAgl_m = 0.
+    end
+    --arrestAngularMomentum()
+
+    XPLMSetDataf(pitch_dataref, 0.)
+    XPLMSetDataf(roll_dataref, 0.)
 end
 
 function slewMode_frame_callback()
