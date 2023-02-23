@@ -50,7 +50,6 @@ local settings = {
 
 --[[ runtime variables ]]
 
-local isEnabled = false
 local isFollowGround = false
 local dAltitude_mPerS = 0.
 local aircraftGearPitch_deg = 0.
@@ -71,6 +70,8 @@ local groundNormal_dataref = XPLMFindDataRef("sim/flightmodel/ground/plugin_grou
 local agl_dataref = XPLMFindDataRef("sim/flightmodel/position/y_agl")
 local period_s_dataref = XPLMFindDataRef("sim/operation/misc/frame_rate_period")
 local axii_dataref = XPLMFindDataRef("sim/joystick/joy_mapped_axis_value")
+
+--[[ local ]]
 
 local function log(msg, level)
     -- @see https://stackoverflow.com/questions/9168058/how-to-dump-a-table-to-console
@@ -119,6 +120,29 @@ local function addMacroAndCommand(cmdRef, title, eval, evalContinue, evalEnd)
     )
     create_command(cmdRef, title, eval, evalContinue, evalEnd)
     add_macro(title, eval)
+end
+
+local function addToggleMacroAndCommand(cmdRef, titlePrefix, activateCallbackName, globalStateVariableName)
+    local macroActivated = loadstring("return " .. globalStateVariableName)() and 'activate' or 'deactivate'
+    local cmdRefToggle = cmdRef .. "Toggle"
+    local cmdRefActivate = cmdRef .. "Activate"
+    local cmdRefDeactivate = cmdRef .. "Deactivate"
+    local macroTitle = titlePrefix .. "Activate/De-Activate (Toggle)"
+    log(
+        string.format(
+            "Adding commands %s, %s, %s and macro '%s' (activated: %s)",
+            cmdRefToggle,
+            cmdRefActivate,
+            cmdRefDeactivate,
+            macroTitle,
+            macroActivated
+        )
+    )
+
+    create_command(cmdRefToggle, titlePrefix .. "Toggle", activateCallbackName .. "(not " .. globalStateVariableName .. ")", "", "")
+    create_command(cmdRefActivate, titlePrefix .. "Activate", activateCallbackName .. "(true)", "", "")
+    create_command(cmdRefDeactivate, titlePrefix .. "De-Activate", activateCallbackName .. "(false)", "", "")
+    add_macro(macroTitle, activateCallbackName .. "(true)", activateCallbackName .. "(false)", macroActivated)
 end
 
 -- a symmetric "ease-in" function passing through (-1/-1), (0/0) and (1/1)
@@ -289,17 +313,17 @@ local function isOnGround()
     return false
 end
 
-local function activate(_isEnabled)
-    isEnabled = _isEnabled
+local function activate(isEnabled)
+    slewMode_isEnabled = isEnabled
 
     log(
         string.format(
             "enabled: %s",
-            isEnabled
+            slewMode_isEnabled
         )
     )
 
-    if isEnabled then
+    if slewMode_isEnabled then
         -- init if we have been activated
         isFollowGround = isOnGround()
         if isFollowGround then
@@ -338,7 +362,7 @@ local function activate(_isEnabled)
     end
 
     -- http://www.xsquawkbox.net/xpsdk/mediawiki/Sim/operation/override/override_planepath
-    local overridePlanepath = {[0] = isEnabled and 1 or 0}
+    local overridePlanepath = {[0] = slewMode_isEnabled and 1 or 0}
     XPLMSetDatavi(
         XPLMFindDataRef("sim/operation/override/override_planepath"),
         overridePlanepath,
@@ -348,20 +372,11 @@ local function activate(_isEnabled)
 end
 
 local function init()
-    addMacroAndCommand(
-        "flightwusel/SlewMode/Toggle",
-        "SlewMode: Activate/De-Activate (Toggle)",
-        "slewMode_toggle_callback()"
-    )
-    addMacroAndCommand(
-        "flightwusel/SlewMode/Activate",
-        "SlewMode: Activate",
-        "slewMode_activate_callback(true)"
-    )
-    addMacroAndCommand(
-        "flightwusel/SlewMode/Deactivate",
-        "SlewMode: De-Activate",
-        "slewMode_activate_callback(false)"
+    addToggleMacroAndCommand(
+        "flightwusel/SlewMode/",
+        "SlewMode: ",
+        "slewMode_activate_callback",
+        "slewMode_isEnabled"
     )
     addMacroAndCommand(
         "flightwusel/SlewMode/Altitude_increase_lots",
@@ -397,24 +412,20 @@ local function init()
     do_on_keystroke("slewmode_keystroke_callback()")
 end
 
-init()
-
 --[[ global ]]
 
-function slewMode_toggle_callback()
-    activate(not isEnabled)
-end
+slewMode_isEnabled = false
 
-function slewMode_activate_callback(_isEnabled)
-    if isEnabled == _isEnabled then
+function slewMode_activate_callback(isEnabled)
+    if slewMode_isEnabled == isEnabled then
         return
     end
 
-    activate(_isEnabled)
+    activate(isEnabled)
 end
 
 function slewMode_altitudeChangeBy_callback(_dAltitude_mPerS)
-    if not isEnabled then
+    if not slewMode_isEnabled then
         return
     end
 
@@ -426,7 +437,7 @@ function slewMode_altitudeChangeBy_callback(_dAltitude_mPerS)
 end
 
 function slewMode_setLevel_callback()
-    if not isEnabled then
+    if not slewMode_isEnabled then
         return
     end
 
@@ -442,7 +453,7 @@ function slewMode_setLevel_callback()
 end
 
 function slewMode_frame_callback()
-    if not isEnabled then
+    if not slewMode_isEnabled then
         return
     end
 
@@ -450,7 +461,7 @@ function slewMode_frame_callback()
 end
 
 function slewMode_draw_callback()
-    if not isEnabled then
+    if not slewMode_isEnabled then
         return
     end
 
@@ -463,7 +474,7 @@ function slewMode_draw_callback()
 end
 
 function slewmode_keystroke_callback()
-    if not isEnabled then
+    if not slewMode_isEnabled then
         return
     end
 
@@ -479,3 +490,5 @@ function slewmode_keystroke_callback()
 
     -- RESUME_KEY
 end
+
+init()
