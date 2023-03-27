@@ -91,7 +91,7 @@ local function log(msg, level)
     local msg = msg or ""
     local level = level or ""
     local filePath = debug.getinfo(2, "S").source
-    local fileName = filePath:match("[^/\\]*.lua$")
+    local fileName = filePath:match("[^/\\]*[.]lua$")
     local functionName = debug.getinfo(2, "n").name
     logMsg(
         string.format(
