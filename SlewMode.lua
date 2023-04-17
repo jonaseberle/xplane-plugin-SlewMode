@@ -369,6 +369,11 @@ local function activate(isEnabled)
         XPLMSetDataf(vx_dataref, vx)
         XPLMSetDataf(vy_dataref, vy)
         XPLMSetDataf(vz_dataref, vz)
+
+        -- unset freeze mode
+        dForwardFreeze_mPerS = 0.
+        dSidewaysFreeze_mPerS = 0.
+        doFreeze = false
     end
 
     -- http://www.xsquawkbox.net/xpsdk/mediawiki/Sim/operation/override/override_planepath
@@ -491,7 +496,7 @@ function slewmode_keystroke_callback()
     if VKEY == settings['modifierKeyCode'] and SHIFT_KEY then
         -- freeze inputs on next frame if modifier + SHIFT
         doFreeze = true
-        log("freezing")
+        log("Freezing movement vector.")
     elseif VKEY == settings['modifierKeyCode'] then
         isModifierKeyPressed = KEY_ACTION == "pressed"
         log(
