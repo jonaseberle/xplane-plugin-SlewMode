@@ -28,6 +28,9 @@ Put the .lua file into `./Resources/plugins/FlyWithLua/Scripts/`
     - Pitch axis -> pitch
     - Roll axis -> roll
   - You can bind keys for increasing/decreasing altitude.
+  - While pressing <kbd>SHIFT+SPACE</kbd> your current input will be the default movement vector.
+    Example: Move stick forward, press <kbd>SHIFT+SPACE</kbd> and you will continue to move forward even
+    if you center the stick again.
 * Stop Slew Mode by pressing the key again.
 
 ### More commands

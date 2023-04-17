@@ -55,6 +55,9 @@ local dAltitude_mPerS = 0.
 local aircraftGearPitch_deg = 0.
 local aircraftGearAgl_m = 0.
 local isModifierKeyPressed = false
+local dForwardFreeze_mPerS = 0.
+local dSidewaysFreeze_mPerS = 0.
+local doFreeze = false
 
 local x_dataref = XPLMFindDataRef("sim/flightmodel/position/local_x")
 local y_dataref = XPLMFindDataRef("sim/flightmodel/position/local_y")
@@ -216,6 +219,11 @@ local function do_slew()
     if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
         local dForward = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
         local dForward_mPerS = dForward * functionSettings['max_mPerS']
+        if doFreeze then
+            dForwardFreeze_mPerS = dForward_mPerS
+            doFreeze = false
+        end
+        local dForward_mPerS = dForward_mPerS + dForwardFreeze_mPerS
         local dx = -math.sin(hdg_rad) * dForward_mPerS * period_s
         x = x + dx
         local dz = math.cos(hdg_rad) * dForward_mPerS * period_s
@@ -478,7 +486,11 @@ function slewmode_keystroke_callback()
         return
     end
 
-    if VKEY == settings['modifierKeyCode'] then
+    if VKEY == settings['modifierKeyCode'] and SHIFT_KEY then
+        -- freeze inputs on next frame if modifier + SHIFT
+        doFreeze = true
+        log("freezing")
+    elseif VKEY == settings['modifierKeyCode'] then
         isModifierKeyPressed = KEY_ACTION == "pressed"
         log(
             string.format(
