@@ -73,7 +73,8 @@ local groundNormal_dataref = XPLMFindDataRef("sim/flightmodel/ground/plugin_grou
 local agl_dataref = XPLMFindDataRef("sim/flightmodel/position/y_agl")
 local period_s_dataref = XPLMFindDataRef("sim/operation/misc/frame_rate_period")
 local axii_dataref = XPLMFindDataRef("sim/joystick/joy_mapped_axis_value")
-
+local overridePlanepath_dataref = XPLMFindDataRef("sim/operation/override/override_planepath")
+local gearsOnGround_dataref = XPLMFindDataRef("sim/flightmodel2/gear/on_ground")
 --[[ local ]]
 
 local function log(msg, level)
@@ -306,12 +307,13 @@ local function do_slew()
 end
 
 local function isOnGround()
-    local gearsOnGround = XPLMGetDatavi(
-        XPLMFindDataRef("sim/flightmodel2/gear/on_ground"),
-        0,
-        10
-    )
+    -- gearsOnGround_dataref won't work while physics off
+    local isOverridePlanepath = XPLMGetDatavi(overridePlanepath_dataref, 0, 1)[0]
+    if isOverridePlanepath then
+        return false
+    end
 
+    local gearsOnGround = XPLMGetDatavi(gearsOnGround_dataref, 0, 10)
     for i, v in ipairs(gearsOnGround) do
         if v == 1 then
             return true
@@ -372,7 +374,7 @@ local function activate(isEnabled)
     -- http://www.xsquawkbox.net/xpsdk/mediawiki/Sim/operation/override/override_planepath
     local overridePlanepath = {[0] = slewMode_isEnabled and 1 or 0}
     XPLMSetDatavi(
-        XPLMFindDataRef("sim/operation/override/override_planepath"),
+        overridePlanepath_dataref,
         overridePlanepath,
         0,
         1
