@@ -222,7 +222,6 @@ local function do_slew()
         local dForward_mPerS = dForward * functionSettings['max_mPerS']
         if doFreeze then
             dForwardFreeze_mPerS = dForward_mPerS
-            doFreeze = false
         end
         local dForward_mPerS = dForward_mPerS + dForwardFreeze_mPerS
         local dx = -math.sin(hdg_rad) * dForward_mPerS * period_s
@@ -236,11 +235,17 @@ local function do_slew()
     if functionSettings['onlyWhenModifier'] == null or functionSettings['onlyWhenModifier'] == isModifierKeyPressed then
         local dSideways = accelerate(axii[functionSettings['axis']], functionSettings['inputAccel'])
         local dSideways_mPerS = dSideways * functionSettings['max_mPerS']
+        if doFreeze then
+            dSidewaysFreeze_mPerS = dSideways_mPerS
+        end
+        local dSideways_mPerS = dSideways_mPerS + dSidewaysFreeze_mPerS
         local dx = -math.sin(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
         x = x + dx
         local dz = math.cos(hdg_rad - math.pi / 2) * dSideways_mPerS * period_s
         z = z + dz
     end
+    -- stop freeze capturing
+    doFreeze = false
 
     -- adjust altitude
     local dy = dAltitude_mPerS * period_s
