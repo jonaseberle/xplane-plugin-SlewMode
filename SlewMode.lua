@@ -314,7 +314,7 @@ end
 local function isOnGround()
     -- gearsOnGround_dataref won't work while physics off
     local isOverridePlanepath = XPLMGetDatavi(overridePlanepath_dataref, 0, 1)[0]
-    if isOverridePlanepath then
+    if isOverridePlanepath == 1 then
         return false
     end
 
